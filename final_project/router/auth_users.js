@@ -6,16 +6,14 @@ const regd_users = express.Router();
 let users = [];
 
 const isValid = (username) => {
-  // Retorna true si el nombre de usuario ya está registrado
   return users.some((user) => user.username === username);
 }
 
 const authenticatedUser = (username, password) => {
-  // Retorna true si las credenciales coinciden con algún usuario registrado
   return users.some((user) => user.username === username && user.password === password);
 }
 
-// Iniciar sesión para usuarios registrados
+// Tarea 7: Iniciar sesión para usuarios registrados
 regd_users.post("/login", (req, res) => {
   const username = req.body.username;
   const password = req.body.password;
@@ -25,12 +23,10 @@ regd_users.post("/login", (req, res) => {
   }
 
   if (authenticatedUser(username, password)) {
-    // Genera el token JWT
     let accessToken = jwt.sign({
       data: password
     }, 'access', { expiresIn: 60 * 60 });
 
-    // Guarda los datos de autenticación en la sesión
     req.session.authorization = {
       accessToken, username
     }
@@ -40,7 +36,7 @@ regd_users.post("/login", (req, res) => {
   }
 });
 
-// Añadir o modificar una reseña de libro
+// Tarea 8: Añadir o modificar una reseña de libro
 regd_users.put("/auth/review/:isbn", (req, res) => {
   const isbn = req.params.isbn;
   const review = req.query.review;
@@ -54,13 +50,11 @@ regd_users.put("/auth/review/:isbn", (req, res) => {
     return res.status(400).json({ message: "Review content is required" });
   }
 
-  // Añade o actualiza la reseña para el usuario activo
   books[isbn].reviews[username] = review;
-
   return res.status(200).send(`The review for the book with ISBN ${isbn} has been added/updated.`);
 });
 
-// Eliminar una reseña de libro (Tarea 9)
+// Tarea 9: Eliminar una reseña de libro
 regd_users.delete("/auth/review/:isbn", (req, res) => {
   const isbn = req.params.isbn;
   const username = req.session.authorization['username'];
