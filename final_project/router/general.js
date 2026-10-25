@@ -3,27 +3,26 @@ let books = require("./booksdb.js");
 let isValid = require("./auth_users.js").isValid;
 let users = require("./auth_users.js").users;
 const public_users = express.Router();
-const axios = require('axios');
 
+// Registro de usuarios
 public_users.post("/register", (req, res) => {
-  const username = req.body.username;
-  const password = req.body.password;
+  const { username, password } = req.body;
 
   if (!username || !password) {
-    return res.status(404).json({ message: "Unable to register user. Username and password are required." });
+    return res.status(400).json({ message: "Unable to register user. Username and password are required." });
   }
 
   const userExists = users.some((user) => user.username === username);
 
   if (userExists) {
-    return res.status(404).json({ message: "User already exists!" });
+    return res.status(409).json({ message: "User already exists!" });
   }
 
   users.push({ "username": username, "password": password });
   return res.status(200).json({ message: "User successfully registered. Now you can login" });
 });
 
-// Tarea 10: Obtener la lista de libros usando Axios y Async/Await
+// Tarea 10: Obtener la lista de libros usando Promesas y Async/Await
 public_users.get('/', async function (req, res) {
   try {
     const getBooks = new Promise((resolve, reject) => {
@@ -34,16 +33,14 @@ public_users.get('/', async function (req, res) {
       }
     });
 
-    const response = await axios.get('http://localhost:5000/').catch(() => ({ data: books }));
-    const bookList = response.data || await getBooks;
-    
+    const bookList = await getBooks;
     return res.status(200).send(JSON.stringify(bookList, null, 4));
   } catch (error) {
     return res.status(500).json({ message: "General server error fetching books", error: error.message });
   }
 });
 
-// Tarea 11: Obtener detalles por ISBN usando Axios y Async/Await
+// Tarea 11: Obtener detalles por ISBN usando Promesas y Async/Await
 public_users.get('/isbn/:isbn', async function (req, res) {
   const isbn = req.params.isbn;
   try {
@@ -55,19 +52,14 @@ public_users.get('/isbn/:isbn', async function (req, res) {
       }
     });
 
-    const response = await axios.get(`http://localhost:5000/isbn/${isbn}`).catch(() => null);
-    const book = response ? response.data : await getBookByISBN;
-
+    const book = await getBookByISBN;
     return res.status(200).send(JSON.stringify(book, null, 4));
   } catch (error) {
-    if (error && error.status === 404) {
-      return res.status(404).json({ message: error.message });
-    }
-    return res.status(500).json({ message: "General server error fetching book details", error: error ? error.message : "Internal Error" });
+    return res.status(error.status || 500).json({ message: error.message || "Server Error" });
   }
 });
 
-// Tarea 12: Obtener detalles por Autor usando Axios y Async/Await
+// Tarea 12: Obtener detalles por Autor usando Promesas y Async/Await
 public_users.get('/author/:author', async function (req, res) {
   const author = req.params.author;
   try {
@@ -79,7 +71,7 @@ public_users.get('/author/:author', async function (req, res) {
         if (books[key].author.toLowerCase() === author.toLowerCase()) {
           matchingBooks.push({
             isbn: key,
-            author: books[key].author, // Requerido por la evaluación
+            author: books[key].author,
             title: books[key].title,
             reviews: books[key].reviews
           });
@@ -93,19 +85,14 @@ public_users.get('/author/:author', async function (req, res) {
       }
     });
 
-    const response = await axios.get(`http://localhost:5000/author/${author}`).catch(() => null);
-    const booksFound = response ? response.data : await getBooksByAuthor;
-
+    const booksFound = await getBooksByAuthor;
     return res.status(200).send(JSON.stringify(booksFound, null, 4));
   } catch (error) {
-    if (error && error.status === 404) {
-      return res.status(404).json({ message: error.message });
-    }
-    return res.status(500).json({ message: "General server error fetching author details", error: error ? error.message : "Internal Error" });
+    return res.status(error.status || 500).json({ message: error.message || "Server Error" });
   }
 });
 
-// Tarea 13: Obtener detalles por Título usando Axios y Async/Await
+// Tarea 13: Obtener detalles por Título usando Promesas y Async/Await
 public_users.get('/title/:title', async function (req, res) {
   const title = req.params.title;
   try {
@@ -118,7 +105,7 @@ public_users.get('/title/:title', async function (req, res) {
           matchingBooks.push({
             isbn: key,
             author: books[key].author,
-            title: books[key].title, // Requerido por la evaluación
+            title: books[key].title,
             reviews: books[key].reviews
           });
         }
@@ -131,15 +118,10 @@ public_users.get('/title/:title', async function (req, res) {
       }
     });
 
-    const response = await axios.get(`http://localhost:5000/title/${title}`).catch(() => null);
-    const booksFound = response ? response.data : await getBooksByTitle;
-
+    const booksFound = await getBooksByTitle;
     return res.status(200).send(JSON.stringify(booksFound, null, 4));
   } catch (error) {
-    if (error && error.status === 404) {
-      return res.status(404).json({ message: error.message });
-    }
-    return res.status(500).json({ message: "General server error fetching title details", error: error ? error.message : "Internal Error" });
+    return res.status(error.status || 500).json({ message: error.message || "Server Error" });
   }
 });
 
