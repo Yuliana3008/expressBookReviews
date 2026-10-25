@@ -1,0 +1,8 @@
+curl http://localhost:5000/author/Chinua%20Achebe
+[
+    {
+        "isbn": "1",
+        "title": "Things Fall Apart",
+        "reviews": {}
+    }
+]
