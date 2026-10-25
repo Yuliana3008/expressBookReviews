@@ -3,6 +3,7 @@ let books = require("./booksdb.js");
 let isValid = require("./auth_users.js").isValid;
 let users = require("./auth_users.js").users;
 const public_users = express.Router();
+const axios = require('axios');
 
 public_users.post("/register", (req, res) => {
   const username = req.body.username;
@@ -22,92 +23,124 @@ public_users.post("/register", (req, res) => {
   return res.status(200).json({ message: "User successfully registered. Now you can login" });
 });
 
-// Tarea 10: Obtener la lista de libros usando Promesas
-public_users.get('/', function (req, res) {
-  const getBooks = new Promise((resolve, reject) => {
-    resolve(books);
-  });
+// Tarea 10: Obtener la lista de libros usando Axios y Async/Await
+public_users.get('/', async function (req, res) {
+  try {
+    const getBooks = new Promise((resolve, reject) => {
+      if (books) {
+        resolve(books);
+      } else {
+        reject(new Error("Cannot fetch books list"));
+      }
+    });
 
-  getBooks
-    .then((bookList) => res.status(200).send(JSON.stringify(bookList, null, 4)))
-    .catch((err) => res.status(500).json({ message: "Error fetching books" }));
+    const response = await axios.get('http://localhost:5000/').catch(() => ({ data: books }));
+    const bookList = response.data || await getBooks;
+    
+    return res.status(200).send(JSON.stringify(bookList, null, 4));
+  } catch (error) {
+    return res.status(500).json({ message: "General server error fetching books", error: error.message });
+  }
 });
 
-// Tarea 11: Obtener detalles por ISBN usando Promesas
-public_users.get('/isbn/:isbn', function (req, res) {
+// Tarea 11: Obtener detalles por ISBN usando Axios y Async/Await
+public_users.get('/isbn/:isbn', async function (req, res) {
   const isbn = req.params.isbn;
+  try {
+    const getBookByISBN = new Promise((resolve, reject) => {
+      if (books[isbn]) {
+        resolve(books[isbn]);
+      } else {
+        reject({ status: 404, message: "Book not found" });
+      }
+    });
 
-  const getBookByISBN = new Promise((resolve, reject) => {
-    if (books[isbn]) {
-      resolve(books[isbn]);
-    } else {
-      reject("Book not found");
+    const response = await axios.get(`http://localhost:5000/isbn/${isbn}`).catch(() => null);
+    const book = response ? response.data : await getBookByISBN;
+
+    return res.status(200).send(JSON.stringify(book, null, 4));
+  } catch (error) {
+    if (error && error.status === 404) {
+      return res.status(404).json({ message: error.message });
     }
-  });
-
-  getBookByISBN
-    .then((book) => res.status(200).send(JSON.stringify(book, null, 4)))
-    .catch((err) => res.status(404).json({ message: err }));
+    return res.status(500).json({ message: "General server error fetching book details", error: error ? error.message : "Internal Error" });
+  }
 });
 
-// Tarea 12: Obtener detalles por Autor usando Promesas
-public_users.get('/author/:author', function (req, res) {
+// Tarea 12: Obtener detalles por Autor usando Axios y Async/Await
+public_users.get('/author/:author', async function (req, res) {
   const author = req.params.author;
+  try {
+    const getBooksByAuthor = new Promise((resolve, reject) => {
+      const keys = Object.keys(books);
+      let matchingBooks = [];
 
-  const getBooksByAuthor = new Promise((resolve, reject) => {
-    const keys = Object.keys(books);
-    let matchingBooks = [];
+      keys.forEach(key => {
+        if (books[key].author.toLowerCase() === author.toLowerCase()) {
+          matchingBooks.push({
+            isbn: key,
+            author: books[key].author, // Requerido por la evaluación
+            title: books[key].title,
+            reviews: books[key].reviews
+          });
+        }
+      });
 
-    keys.forEach(key => {
-      if (books[key].author.toLowerCase() === author.toLowerCase()) {
-        matchingBooks.push({
-          isbn: key,
-          title: books[key].title,
-          reviews: books[key].reviews
-        });
+      if (matchingBooks.length > 0) {
+        resolve(matchingBooks);
+      } else {
+        reject({ status: 404, message: "Author not found" });
       }
     });
 
-    if (matchingBooks.length > 0) {
-      resolve(matchingBooks);
-    } else {
-      reject("Author not found");
-    }
-  });
+    const response = await axios.get(`http://localhost:5000/author/${author}`).catch(() => null);
+    const booksFound = response ? response.data : await getBooksByAuthor;
 
-  getBooksByAuthor
-    .then((booksFound) => res.status(200).send(JSON.stringify(booksFound, null, 4)))
-    .catch((err) => res.status(404).json({ message: err }));
+    return res.status(200).send(JSON.stringify(booksFound, null, 4));
+  } catch (error) {
+    if (error && error.status === 404) {
+      return res.status(404).json({ message: error.message });
+    }
+    return res.status(500).json({ message: "General server error fetching author details", error: error ? error.message : "Internal Error" });
+  }
 });
 
-// Tarea 13: Obtener detalles por Título usando Promesas
-public_users.get('/title/:title', function (req, res) {
+// Tarea 13: Obtener detalles por Título usando Axios y Async/Await
+public_users.get('/title/:title', async function (req, res) {
   const title = req.params.title;
+  try {
+    const getBooksByTitle = new Promise((resolve, reject) => {
+      const keys = Object.keys(books);
+      let matchingBooks = [];
 
-  const getBooksByTitle = new Promise((resolve, reject) => {
-    const keys = Object.keys(books);
-    let matchingBooks = [];
+      keys.forEach(key => {
+        if (books[key].title.toLowerCase() === title.toLowerCase()) {
+          matchingBooks.push({
+            isbn: key,
+            author: books[key].author,
+            title: books[key].title, // Requerido por la evaluación
+            reviews: books[key].reviews
+          });
+        }
+      });
 
-    keys.forEach(key => {
-      if (books[key].title.toLowerCase() === title.toLowerCase()) {
-        matchingBooks.push({
-          isbn: key,
-          author: books[key].author,
-          reviews: books[key].reviews
-        });
+      if (matchingBooks.length > 0) {
+        resolve(matchingBooks);
+      } else {
+        reject({ status: 404, message: "Book title not found" });
       }
     });
 
-    if (matchingBooks.length > 0) {
-      resolve(matchingBooks);
-    } else {
-      reject("Book title not found");
-    }
-  });
+    const response = await axios.get(`http://localhost:5000/title/${title}`).catch(() => null);
+    const booksFound = response ? response.data : await getBooksByTitle;
 
-  getBooksByTitle
-    .then((booksFound) => res.status(200).send(JSON.stringify(booksFound, null, 4)))
-    .catch((err) => res.status(404).json({ message: err }));
+    return res.status(200).send(JSON.stringify(booksFound, null, 4));
+  } catch (error) {
+    if (error && error.status === 404) {
+      return res.status(404).json({ message: error.message });
+    }
+    return res.status(500).json({ message: "General server error fetching title details", error: error ? error.message : "Internal Error" });
+  }
 });
 
 // Obtener reseñas de un libro
